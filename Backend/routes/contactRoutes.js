@@ -16,4 +16,12 @@ router.get('/', getContactSubmissions);
 router.put('/:id', updateContactStatus);
 router.delete('/:id', deleteContactSubmission);
 
+// Catch-all for any undefined contact routes
+router.all('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Contact API endpoint not found'
+  });
+});
+
 module.exports = router;

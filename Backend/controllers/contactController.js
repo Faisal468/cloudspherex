@@ -7,6 +7,14 @@ exports.submitContactForm = async (req, res, next) => {
   try {
     const { fullName, email, company, serviceInterested, projectDetails } = req.body;
 
+    // Validate required fields
+    if (!fullName || !email || !projectDetails) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide name, email and project details'
+      });
+    }
+
     // Create contact submission
     const contact = await Contact.create({
       fullName,
@@ -22,11 +30,12 @@ exports.submitContactForm = async (req, res, next) => {
     });
   } catch (err) {
     console.error('Contact form submission error:', err);
+    // Always return JSON, even for errors
     res.status(500).json({
-        success: false,
+      success: false,
       error: 'There was an error submitting your message. Please try again.'
-      });
-    }
+    });
+  }
 };
 
 // @desc    Get all contact submissions
@@ -52,9 +61,13 @@ exports.getContactSubmissions = async (req, res, next) => {
       success: true,
       count: contacts.length,
       data: contacts
-      });
+    });
   } catch (err) {
-    next(err);
+    console.error('Error fetching contact submissions:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Error retrieving contact submissions'
+    });
   }
 };
 
@@ -103,7 +116,11 @@ exports.updateContactStatus = async (req, res, next) => {
       data: contact
     });
   } catch (err) {
-    next(err);
+    console.error('Error updating contact status:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Error updating contact status'
+    });
   }
 };
 
@@ -137,6 +154,10 @@ exports.deleteContactSubmission = async (req, res, next) => {
       data: {}
     });
   } catch (err) {
-    next(err);
+    console.error('Error deleting contact submission:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Error deleting contact submission'
+    });
   }
 };

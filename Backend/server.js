@@ -16,8 +16,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// Serve static files from the public directory
-app.use(express.static(path.join(__dirname, 'public')));
 // Import Routes
 const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
@@ -29,14 +27,18 @@ app.use("/api/auth", authRoutes);
 app.use("/api/contact", contactRoutes);
 
 // Basic route
-app.get("/", (req, res) => {
-  res.send("Backend is running...");
+app.get("/api", (req, res) => {
+  res.json({ message: "Backend API is running..." });
 });
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Admin dashboard route
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
 });
+
 // MongoDB Connection
 const connectDB = async () => {
   try {
@@ -53,6 +55,20 @@ const connectDB = async () => {
 
 // Error handling middleware (should be after routes)
 app.use(errorHandler);
+
+// Catch-all route handler for API routes that don't exist
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    error: 'API endpoint not found' 
+  });
+});
+
+// Catch-all route handler for any other routes - serve the frontend
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Connect to database before starting server
 connectDB().then(() => {
   // Start Server
