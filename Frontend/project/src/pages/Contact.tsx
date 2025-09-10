@@ -25,48 +25,90 @@ const Contact: React.FC = () => {
     setIsSubmitting(true);
     setSubmitError("");
 
+    // Create the request payload
+    const payload = {
+      fullName: formData.name,
+      email: formData.email,
+      company: formData.company,
+      serviceInterested: formData.service,
+      projectDetails: formData.message
+    };
+
     try {
-      // Use a try-catch around the entire fetch operation
-      const response = await fetch("https://cloudspherex.org/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: formData.name,
-          email: formData.email,
-          company: formData.company,
-          serviceInterested: formData.service,
-          projectDetails: formData.message
-        })
-      });
-
-      // Check if the response is JSON before trying to parse it
-      const contentType = response.headers.get("content-type");
-      let data;
-      
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        // If not JSON, get the text and log it for debugging
-        const textResponse = await response.text();
-        console.error("Server returned non-JSON response:", textResponse);
-        throw new Error("Server returned an invalid response format. Please try again later.");
+      // First try with the full URL
+      let response;
+      try {
+        response = await fetch("https://cloudspherex.org/api/contact", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"  // Explicitly request JSON response
+          },
+          body: JSON.stringify(payload)
+        });
+      } catch (fetchError) {
+        console.error("Initial fetch failed:", fetchError);
+        // If the first attempt fails, try with a relative URL as fallback
+        response = await fetch("/api/contact", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"  // Explicitly request JSON response
+          },
+          body: JSON.stringify(payload)
+        });
       }
 
-      if (!response.ok) {
-        throw new Error(data.error || "Something went wrong with your submission");
+      // Try to safely handle the response
+      try {
+        // Check if the response is JSON before trying to parse it
+        const contentType = response.headers.get("content-type");
+        
+        if (contentType && contentType.includes("application/json")) {
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || "Something went wrong with your submission");
+          }
+          
+          // Success case - reset form
+          setFormData({ name: "", email: "", company: "", service: "", message: "" });
+          setSubmitSuccess(true);
+          
+          // Hide success after 5s
+          setTimeout(() => setSubmitSuccess(false), 5000);
+        } else {
+          // If not JSON, get the text and log it for debugging
+          const textResponse = await response.text();
+          console.error("Server returned non-JSON response:", textResponse);
+          
+          // If we got a successful status code despite non-JSON response, consider it a success
+          if (response.ok) {
+            setFormData({ name: "", email: "", company: "", service: "", message: "" });
+            setSubmitSuccess(true);
+            setTimeout(() => setSubmitSuccess(false), 5000);
+          } else {
+            throw new Error("Server returned an invalid response format. Please try again later.");
+          }
+        }
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        throw new Error("There was an error processing the server response. Please try again later.");
       }
-      
-      // Reset form
-      setFormData({ name: "", email: "", company: "", service: "", message: "" });
-      setSubmitSuccess(true);
-      
-      // Hide success after 5s
-      setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (err: unknown) {
       console.error("Form submission error:", err);
       const errorMessage =
         err instanceof Error ? err.message : "There was an error submitting your message.";
       setSubmitError(errorMessage);
+      
+      // Fallback: Try sending via email link if all else fails
+      if (window.confirm("There was an issue with the contact form. Would you like to send your message via email instead?")) {
+        const subject = encodeURIComponent(`Website Inquiry: ${formData.service || 'General'}`);
+        const body = encodeURIComponent(
+          `Name: ${formData.name}\nEmail: ${formData.email}\nCompany: ${formData.company}\nService: ${formData.service}\n\n${formData.message}`
+        );
+        window.location.href = `mailto:cloudspherextech0@gmail.com?subject=${subject}&body=${body}`;
+      }
     } finally {
       setIsSubmitting(false);
     }
