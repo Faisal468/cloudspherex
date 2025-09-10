@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { 
   Users, 
   MessageSquare, 
@@ -48,6 +47,7 @@ const AdminDashboard: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('contacts');
   
   // New blog form state
   const [newBlog, setNewBlog] = useState<Omit<BlogPost, 'id' | 'date'>>({
@@ -80,8 +80,13 @@ const AdminDashboard: React.FC = () => {
           throw new Error('API key not found. Please log in again.');
         }
         
+        // Use relative path for API in production
+        const apiUrl = window.location.hostname === 'localhost' 
+          ? 'http://localhost:5000/api/contact' 
+          : '/api/contact';
+        
         // Call your existing API endpoint with the API key
-        const response = await axios.get('/api/contact', {
+        const response = await axios.get(apiUrl, {
           headers: {
             'x-api-key': apiKey
           }
@@ -131,8 +136,13 @@ const AdminDashboard: React.FC = () => {
     try {
       const apiKey = localStorage.getItem('adminApiKey');
       
+      // Use relative path for API in production
+      const apiUrl = window.location.hostname === 'localhost' 
+        ? `http://localhost:5000/api/contact/${id}` 
+        : `/api/contact/${id}`;
+      
       // Update in the database via API
-      await axios.put(`/api/contact/${id}`, 
+      await axios.put(apiUrl, 
         { status: 'in-progress' }, 
         {
           headers: {
@@ -156,8 +166,13 @@ const AdminDashboard: React.FC = () => {
     try {
       const apiKey = localStorage.getItem('adminApiKey');
       
+      // Use relative path for API in production
+      const apiUrl = window.location.hostname === 'localhost' 
+        ? `http://localhost:5000/api/contact/${id}` 
+        : `/api/contact/${id}`;
+      
       // Delete from the database via API
-      await axios.delete(`/api/contact/${id}`, {
+      await axios.delete(apiUrl, {
         headers: {
           'x-api-key': apiKey
         }
@@ -348,109 +363,125 @@ const AdminDashboard: React.FC = () => {
         </div>
         
         {/* Main Content */}
-        <Tabs defaultValue="contacts" className="w-full">
-          <TabsList className="bg-gray-800 border border-gray-700 rounded-xl p-1 mb-6">
-            <TabsTrigger value="contacts" className="data-[state=active]:bg-gray-700 data-[state=active]:text-white text-gray-400 py-2 px-4 rounded-lg">
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-1 mb-6">
+          <div className="flex space-x-1">
+            <button
+              onClick={() => setActiveTab('contacts')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 ${
+                activeTab === 'contacts'
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
               Contact Inquiries
-            </TabsTrigger>
-            <TabsTrigger value="blogs" className="data-[state=active]:bg-gray-700 data-[state=active]:text-white text-gray-400 py-2 px-4 rounded-lg">
+            </button>
+            <button
+              onClick={() => setActiveTab('blogs')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 ${
+                activeTab === 'blogs'
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+            >
               Blog Management
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="contacts" className="mt-6">
-            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-900">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Service</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+            </button>
+          </div>
+        </div>
+        
+        {activeTab === 'contacts' && (
+          <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-900">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Service</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {contacts.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-gray-400">
+                        No contact inquiries yet
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {contacts.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-gray-400">
-                          No contact inquiries yet
+                  ) : (
+                    contacts.map((contact) => (
+                      <tr key={contact._id} className={!contact.status || contact.status === 'new' ? 'bg-blue-900/10' : ''}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-white">{contact.fullName}</div>
+                          {contact.company && (
+                            <div className="text-xs text-gray-400">{contact.company}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {contact.email}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {contact.serviceInterested || 'Not specified'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {new Date(contact.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            !contact.status || contact.status === 'new' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : contact.status === 'in-progress'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {!contact.status || contact.status === 'new' 
+                              ? 'New' 
+                              : contact.status === 'in-progress'
+                              ? 'In Progress'
+                              : 'Completed'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end space-x-2">
+                            {(!contact.status || contact.status === 'new') && (
+                              <button
+                                onClick={() => markAsRead(contact._id)}
+                                className="text-blue-400 hover:text-blue-300"
+                                title="Mark as in progress"
+                              >
+                                <Check className="w-5 h-5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                alert(`Message from ${contact.fullName}:\n\n${contact.projectDetails}`);
+                              }}
+                              className="text-gray-400 hover:text-gray-300"
+                              title="View message"
+                            >
+                              <Eye className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => deleteContact(contact._id)}
+                              className="text-red-400 hover:text-red-300"
+                              title="Delete"
+                            >
+                              <Trash className="w-5 h-5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                    ) : (
-                      contacts.map((contact) => (
-                        <tr key={contact._id} className={!contact.status || contact.status === 'new' ? 'bg-blue-900/10' : ''}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-white">{contact.fullName}</div>
-                            {contact.company && (
-                              <div className="text-xs text-gray-400">{contact.company}</div>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                            {contact.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                            {contact.serviceInterested || 'Not specified'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                            {new Date(contact.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              !contact.status || contact.status === 'new' 
-                                ? 'bg-blue-100 text-blue-800' 
-                                : contact.status === 'in-progress'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-green-100 text-green-800'
-                            }`}>
-                              {!contact.status || contact.status === 'new' 
-                                ? 'New' 
-                                : contact.status === 'in-progress'
-                                ? 'In Progress'
-                                : 'Completed'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex justify-end space-x-2">
-                              {(!contact.status || contact.status === 'new') && (
-                                <button
-                                  onClick={() => markAsRead(contact._id)}
-                                  className="text-blue-400 hover:text-blue-300"
-                                  title="Mark as in progress"
-                                >
-                                  <Check className="w-5 h-5" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => {
-                                  alert(`Message from ${contact.fullName}:\n\n${contact.projectDetails}`);
-                                }}
-                                className="text-gray-400 hover:text-gray-300"
-                                title="View message"
-                              >
-                                <Eye className="w-5 h-5" />
-                              </button>
-                              <button
-                                onClick={() => deleteContact(contact._id)}
-                                className="text-red-400 hover:text-red-300"
-                                title="Delete"
-                              >
-                                <Trash className="w-5 h-5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="blogs" className="mt-6 space-y-6">
+          </div>
+        )}
+        
+        {activeTab === 'blogs' && (
+          <div className="space-y-6">
             {/* Blog Form */}
             <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
               <h2 className="text-xl font-bold text-white mb-4">
@@ -638,8 +669,8 @@ const AdminDashboard: React.FC = () => {
                 )}
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </div>
     </div>
   );

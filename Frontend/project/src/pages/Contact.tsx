@@ -33,7 +33,7 @@ const Contact: React.FC = () => {
     }
 
     try {
-      // Create the request payload - match exactly what the backend expects
+      // Create the request payload
       const payload = {
         fullName: formData.name,
         email: formData.email,
@@ -42,63 +42,39 @@ const Contact: React.FC = () => {
         projectDetails: formData.message
       };
 
-      console.log("Sending payload:", payload);
+      // Use relative path for API in production
+      const apiUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5000/api/contact' 
+        : '/api/contact';
 
-      // Try API submission with fetch
-      const response = await fetch("/api/contact", {
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
         body: JSON.stringify(payload)
-
-      
       });
 
-      console.log("Response status:", response.status);
-      
-      // Handle the response based on status code first
-      if (response.status >= 200 && response.status < 300) {
-        // Success case - reset form regardless of response format
-        setFormData({ name: "", email: "", company: "", service: "", message: "" });
-        setSubmitSuccess(true);
-        
-        // Hide success after 5s
-        setTimeout(() => setSubmitSuccess(false), 5000);
-        return; // Exit early on success
-      }
-      
-      // If we get here, the response wasn't successful, try to get error details
-      let errorMessage = "Something went wrong with your submission";
-      
-      try {
-        // Try to get the response as text first
-        const responseText = await response.text();
-        console.log("Response text:", responseText);
-        
-        // Only try to parse as JSON if it looks like JSON
-        if (responseText && (responseText.startsWith('{') || responseText.startsWith('['))) {
-          try {
-            const data = JSON.parse(responseText);
-            console.log("Parsed JSON response:", data);
-            
-            // Extract error message if available
-            if (data && data.error) {
-              errorMessage = data.error;
-            }
-          } catch (parseError) {
-            console.log("Failed to parse JSON response:", parseError);
-            // Continue with default error message
-          }
+      // Check if response is HTML (error page)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.indexOf('text/html') !== -1) {
+        const text = await response.text();
+        if (text.includes('<!DOCTYPE html>')) {
+          throw new Error('Server returned HTML instead of JSON. Check API endpoint.');
         }
-      } catch (textError) {
-        console.error("Error getting response text:", textError);
-        // Continue with default error message
       }
-      
-      // Throw error to be caught by outer catch block
-      throw new Error(errorMessage);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Server error: ${response.status}`);
+      }
+
+      // Success case
+      setFormData({ name: "", email: "", company: "", service: "", message: "" });
+      setSubmitSuccess(true);
+      setTimeout(() => setSubmitSuccess(false), 5000);
       
     } catch (err) {
       console.error("Form submission error:", err);

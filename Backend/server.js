@@ -11,15 +11,32 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+// Middleware for parsing JSON and URL-encoded data
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Enable CORS with specific options
+app.use(cors({
+  origin: ['https://cloudspherex.org', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Accept', 'x-api-key']
+}));
 
 // Import Routes
 const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+
+// Debug middleware to log request bodies
+app.use((req, res, next) => {
+  if (req.method === 'POST' && req.path.includes('/api/contact')) {
+    console.log('Contact form request received:');
+    console.log('Headers:', req.headers);
+    console.log('Content-Type:', req.headers['content-type']);
+    console.log('Body:', req.body);
+  }
+  next();
+});
 
 // Mount Routes
 app.use("/api/users", userRoutes);
@@ -35,7 +52,7 @@ app.get("/api", (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Admin dashboard route
-app.get("/admin", (req, res) => {
+app.get("/admin*", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin', 'index.html'));
 });
 
