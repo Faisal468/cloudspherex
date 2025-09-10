@@ -33,38 +33,75 @@ const Contact: React.FC = () => {
     }
 
     try {
-      // Try API submission with CORS mode explicitly set to no-cors
+      // Create the request payload - match exactly what the backend expects
+      const payload = {
+        fullName: formData.name,
+        email: formData.email,
+        company: formData.company || "",
+        serviceInterested: formData.service || "",
+        projectDetails: formData.message
+      };
+
+      console.log("Sending payload:", payload);
+
+      // Try API submission with fetch
       const response = await fetch("https://cloudspherex.org/api/contact", {
         method: "POST",
-        mode: "cors", // Try with standard CORS
         headers: { 
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
-        body: JSON.stringify({
-          fullName: formData.name,
-          email: formData.email,
-          company: formData.company,
-          serviceInterested: formData.service,
-          projectDetails: formData.message
-        })
+        body: JSON.stringify(payload)
       });
 
-      // Check if response is ok regardless of content type
-      if (response.ok) {
-        // Success case - reset form
+      console.log("Response status:", response.status);
+      
+      // Handle the response based on status code first
+      if (response.status >= 200 && response.status < 300) {
+        // Success case - reset form regardless of response format
         setFormData({ name: "", email: "", company: "", service: "", message: "" });
         setSubmitSuccess(true);
         
         // Hide success after 5s
         setTimeout(() => setSubmitSuccess(false), 5000);
-      } else {
-        // If response is not ok, throw error to trigger email fallback
-        throw new Error("Server returned an error response");
+        return; // Exit early on success
       }
+      
+      // If we get here, the response wasn't successful, try to get error details
+      let errorMessage = "Something went wrong with your submission";
+      
+      try {
+        // Try to get the response as text first
+        const responseText = await response.text();
+        console.log("Response text:", responseText);
+        
+        // Only try to parse as JSON if it looks like JSON
+        if (responseText && (responseText.startsWith('{') || responseText.startsWith('['))) {
+          try {
+            const data = JSON.parse(responseText);
+            console.log("Parsed JSON response:", data);
+            
+            // Extract error message if available
+            if (data && data.error) {
+              errorMessage = data.error;
+            }
+          } catch (parseError) {
+            console.log("Failed to parse JSON response:", parseError);
+            // Continue with default error message
+          }
+        }
+      } catch (textError) {
+        console.error("Error getting response text:", textError);
+        // Continue with default error message
+      }
+      
+      // Throw error to be caught by outer catch block
+      throw new Error(errorMessage);
+      
     } catch (err) {
       console.error("Form submission error:", err);
-      setSubmitError("We're having trouble submitting your form. Would you like to use email instead?");
+      const errorMessage = err instanceof Error ? err.message : "There was an error submitting your message.";
+      setSubmitError(errorMessage + " Would you like to use email instead?");
       setUseEmailMethod(true);
     } finally {
       setIsSubmitting(false);
@@ -268,7 +305,7 @@ const Contact: React.FC = () => {
                 </button>
                 
                 {!useEmailMethod && (
-                  <div className="text-center">
+                  <div className="text-center mt-4">
                     <button 
                       type="button"
                       onClick={() => setUseEmailMethod(true)}
