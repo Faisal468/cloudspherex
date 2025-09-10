@@ -38,22 +38,32 @@ const Contact: React.FC = () => {
         })
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Something went wrong");
+      // Check if the response is JSON before trying to parse it
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || "Something went wrong");
+        }
+        
+        // Reset form
+        setFormData({ name: "", email: "", company: "", service: "", message: "" });
+        setSubmitSuccess(true);
+        
+        // Hide success after 5s
+        setTimeout(() => setSubmitSuccess(false), 5000);
+      } else {
+        // Handle non-JSON response
+        const textResponse = await response.text();
+        console.error("Server returned non-JSON response:", textResponse);
+        throw new Error("Server returned an invalid response format. Please try again later.");
       }
-
-      // Reset form
-      setFormData({ name: "", email: "", company: "", service: "", message: "" });
-      setSubmitSuccess(true);
-
-      // Hide success after 5s
-      setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "There was an error submitting your message.";
       setSubmitError(errorMessage);
+      console.error("Form submission error:", err);
     } finally {
       setIsSubmitting(false);
     }
