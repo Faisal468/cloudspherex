@@ -26,6 +26,7 @@ const Contact: React.FC = () => {
     setSubmitError("");
 
     try {
+      // Use a try-catch around the entire fetch operation
       const response = await fetch("https://cloudspherex.org/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,30 +41,32 @@ const Contact: React.FC = () => {
 
       // Check if the response is JSON before trying to parse it
       const contentType = response.headers.get("content-type");
+      let data;
+      
       if (contentType && contentType.includes("application/json")) {
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || "Something went wrong");
-        }
-        
-        // Reset form
-        setFormData({ name: "", email: "", company: "", service: "", message: "" });
-        setSubmitSuccess(true);
-        
-        // Hide success after 5s
-        setTimeout(() => setSubmitSuccess(false), 5000);
+        data = await response.json();
       } else {
-        // Handle non-JSON response
+        // If not JSON, get the text and log it for debugging
         const textResponse = await response.text();
         console.error("Server returned non-JSON response:", textResponse);
         throw new Error("Server returned an invalid response format. Please try again later.");
       }
+
+      if (!response.ok) {
+        throw new Error(data.error || "Something went wrong with your submission");
+      }
+      
+      // Reset form
+      setFormData({ name: "", email: "", company: "", service: "", message: "" });
+      setSubmitSuccess(true);
+      
+      // Hide success after 5s
+      setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (err: unknown) {
+      console.error("Form submission error:", err);
       const errorMessage =
         err instanceof Error ? err.message : "There was an error submitting your message.";
       setSubmitError(errorMessage);
-      console.error("Form submission error:", err);
     } finally {
       setIsSubmitting(false);
     }
