@@ -13,6 +13,7 @@ const Contact: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [useEmailMethod, setUseEmailMethod] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -25,90 +26,71 @@ const Contact: React.FC = () => {
     setIsSubmitting(true);
     setSubmitError("");
 
-    // Create the request payload
-    const payload = {
-      fullName: formData.name,
-      email: formData.email,
-      company: formData.company,
-      serviceInterested: formData.service,
-      projectDetails: formData.message
-    };
+    // If user has chosen to use email method directly
+    if (useEmailMethod) {
+      handleEmailSubmit();
+      return;
+    }
 
     try {
-      // First try with the full URL
-      let response;
-      try {
-        response = await fetch("https://cloudspherex.org/api/contact", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Accept": "application/json"  // Explicitly request JSON response
-          },
-          body: JSON.stringify(payload)
-        });
-      } catch (fetchError) {
-        console.error("Initial fetch failed:", fetchError);
-        // If the first attempt fails, try with a relative URL as fallback
-        response = await fetch("/api/contact", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Accept": "application/json"  // Explicitly request JSON response
-          },
-          body: JSON.stringify(payload)
-        });
-      }
+      // Try API submission with CORS mode explicitly set to no-cors
+      const response = await fetch("https://cloudspherex.org/api/contact", {
+        method: "POST",
+        mode: "cors", // Try with standard CORS
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          fullName: formData.name,
+          email: formData.email,
+          company: formData.company,
+          serviceInterested: formData.service,
+          projectDetails: formData.message
+        })
+      });
 
-      // Try to safely handle the response
-      try {
-        // Check if the response is JSON before trying to parse it
-        const contentType = response.headers.get("content-type");
+      // Check if response is ok regardless of content type
+      if (response.ok) {
+        // Success case - reset form
+        setFormData({ name: "", email: "", company: "", service: "", message: "" });
+        setSubmitSuccess(true);
         
-        if (contentType && contentType.includes("application/json")) {
-          const data = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(data.error || "Something went wrong with your submission");
-          }
-          
-          // Success case - reset form
-          setFormData({ name: "", email: "", company: "", service: "", message: "" });
-          setSubmitSuccess(true);
-          
-          // Hide success after 5s
-          setTimeout(() => setSubmitSuccess(false), 5000);
-        } else {
-          // If not JSON, get the text and log it for debugging
-          const textResponse = await response.text();
-          console.error("Server returned non-JSON response:", textResponse);
-          
-          // If we got a successful status code despite non-JSON response, consider it a success
-          if (response.ok) {
-            setFormData({ name: "", email: "", company: "", service: "", message: "" });
-            setSubmitSuccess(true);
-            setTimeout(() => setSubmitSuccess(false), 5000);
-          } else {
-            throw new Error("Server returned an invalid response format. Please try again later.");
-          }
-        }
-      } catch (parseError) {
-        console.error("Error parsing response:", parseError);
-        throw new Error("There was an error processing the server response. Please try again later.");
+        // Hide success after 5s
+        setTimeout(() => setSubmitSuccess(false), 5000);
+      } else {
+        // If response is not ok, throw error to trigger email fallback
+        throw new Error("Server returned an error response");
       }
-    } catch (err: unknown) {
+    } catch (err) {
       console.error("Form submission error:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "There was an error submitting your message.";
-      setSubmitError(errorMessage);
+      setSubmitError("We're having trouble submitting your form. Would you like to use email instead?");
+      setUseEmailMethod(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEmailSubmit = () => {
+    try {
+      const subject = encodeURIComponent(`Website Inquiry: ${formData.service || 'General'}`);
+      const body = encodeURIComponent(
+        `Name: ${formData.name}\nEmail: ${formData.email}\nCompany: ${formData.company}\nService: ${formData.service}\n\n${formData.message}`
+      );
       
-      // Fallback: Try sending via email link if all else fails
-      if (window.confirm("There was an issue with the contact form. Would you like to send your message via email instead?")) {
-        const subject = encodeURIComponent(`Website Inquiry: ${formData.service || 'General'}`);
-        const body = encodeURIComponent(
-          `Name: ${formData.name}\nEmail: ${formData.email}\nCompany: ${formData.company}\nService: ${formData.service}\n\n${formData.message}`
-        );
-        window.location.href = `mailto:cloudspherextech0@gmail.com?subject=${subject}&body=${body}`;
-      }
+      // Open email client with pre-filled details
+      window.location.href = `mailto:cloudspherextech0@gmail.com?subject=${subject}&body=${body}`;
+      
+      // Show success message
+      setFormData({ name: "", email: "", company: "", service: "", message: "" });
+      setSubmitSuccess(true);
+      setUseEmailMethod(false);
+      
+      // Hide success after 5s
+      setTimeout(() => setSubmitSuccess(false), 5000);
+    } catch (err) {
+      console.error("Email submission error:", err);
+      setSubmitError("There was an error opening your email client. Please email us directly at cloudspherextech0@gmail.com");
     } finally {
       setIsSubmitting(false);
     }
@@ -175,6 +157,14 @@ const Contact: React.FC = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
+                {useEmailMethod && (
+                  <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4 mb-4">
+                    <p className="text-blue-300 text-sm">
+                      You'll be redirected to your email client to send your message directly. We'll pre-fill all the details for you.
+                    </p>
+                  </div>
+                )}
+                
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
@@ -271,8 +261,23 @@ const Contact: React.FC = () => {
                   disabled={isSubmitting}
                   className={`group w-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white px-8 py-4 rounded-2xl font-semibold shadow-2xl hover:shadow-cyan-500/25 transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2 ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
                 >
-                  {isSubmitting ? "Sending..." : <>Send Message <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" /></>}
+                  {isSubmitting ? "Processing..." : useEmailMethod ? 
+                    <>Open Email Client <Mail className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" /></> : 
+                    <>Send Message <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" /></>
+                  }
                 </button>
+                
+                {!useEmailMethod && (
+                  <div className="text-center">
+                    <button 
+                      type="button"
+                      onClick={() => setUseEmailMethod(true)}
+                      className="text-cyan-400 text-sm hover:underline focus:outline-none"
+                    >
+                      Having trouble? Send via email instead
+                    </button>
+                  </div>
+                )}
               </form>
             )}
           </motion.div>
