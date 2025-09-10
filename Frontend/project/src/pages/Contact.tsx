@@ -45,13 +45,15 @@ const Contact: React.FC = () => {
       console.log("Sending payload:", payload);
 
       // Try API submission with fetch
-      const response = await fetch("https://cloudspherex.org/api/contact", {
+      const response = await fetch("/api/contact", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
         body: JSON.stringify(payload)
+
+      
       });
 
       console.log("Response status:", response.status);
@@ -135,7 +137,7 @@ const Contact: React.FC = () => {
 
   const contactInfo = [
     { icon: Mail, title: "Email Us", details: "cloudspherextech0@gmail.com", description: "Send us an email anytime" },
-    { icon: Phone, title: "Call Us", details: "051-2305230", description: "Mon-Fri from 8am to 5pm" },
+    { icon: Phone, title: "Call Us", details: "+92 3426069324", description: "Mon-Fri from 8am to 5pm" },
     { icon: MapPin, title: "Visit Us", details: "Islamabad, Pakistan", description: "Come say hello at our office" },
     { icon: Clock, title: "Working Hours", details: "Mon-Fri: 9AM-6PM", description: "We are available during business hours" }
   ];
