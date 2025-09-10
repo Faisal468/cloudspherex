@@ -198,7 +198,7 @@ const Contact: React.FC = () => {
                     </select>
                   </div>
                 </div>
-
+// Project Details
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2">
                     Project Details *
